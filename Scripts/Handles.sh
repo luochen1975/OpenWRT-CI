@@ -72,3 +72,21 @@ if [ -f "$RUST_FILE" ]; then
 
 	cd $PKG_PATH && echo "rust has been fixed!"
 fi
+# 修改 AX6000 ubootmod 输出格式为 .bin
+FILOGIC_MK="./target/linux/mediatek/image/filogic.mk"
+if [ -f "$FILOGIC_MK" ]; then
+    echo " "
+    
+    # 使用 awk 精确定位 xiaomi_redmi-router-ax6000-ubootmod 设备定义块
+    awk '
+    /define Device\/xiaomi_redmi-router-ax6000-ubootmod/ { in_device=1 }
+    in_device && /IMAGES := sysupgrade\.itb/ { gsub(/sysupgrade\.itb/, "sysupgrade.bin") }
+    in_device && /IMAGE\/sysupgrade\.itb :=/ { gsub(/IMAGE\/sysupgrade\.itb/, "IMAGE/sysupgrade.bin") }
+    in_device && /KERNEL_INITRAMFS_SUFFIX := -recovery\.itb/ { gsub(/-recovery\.itb/, "-recovery.bin") }
+    /^endef$/ { in_device=0 }
+    { print }
+    ' $FILOGIC_MK > ${FILOGIC_MK}.tmp && mv ${FILOGIC_MK}.tmp $FILOGIC_MK
+    
+    echo "AX6000 ubootmod image format has been changed to .bin!"
+fi
+
