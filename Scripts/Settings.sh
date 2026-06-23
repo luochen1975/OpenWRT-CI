@@ -66,3 +66,33 @@ if [[ "${WRT_TARGET^^}" == *"QUALCOMMAX"* ]]; then
 		echo "qualcommax set up nowifi successfully!"
 	fi
 fi
+
+# ============================================
+# Redmi AX6000 ubootmod 同时生成 .bin 格式
+# ============================================
+echo "正在修改 Redmi AX6000 ubootmod 镜像配置..."
+
+cp target/linux/mediatek/image/filogic.mk target/linux/mediatek/image/filogic.mk.bak
+
+awk '
+/define Device\/xiaomi_redmi-router-ax6000-ubootmod/ {
+    in_device = 1
+}
+in_device && /IMAGES := sysupgrade\.itb/ {
+    print "  IMAGES := sysupgrade.itb sysupgrade.bin"
+    next
+}
+in_device && /IMAGE\/sysupgrade\.itb := append-kernel/ {
+    print
+    print "  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata"
+    next
+}
+/endef/ && in_device {
+    in_device = 0
+}
+{ print }
+' target/linux/mediatek/image/filogic.mk > filogic.mk.tmp && mv filogic.mk.tmp target/linux/mediatek/image/filogic.mk
+
+# 验证修改是否成功
+echo "验证修改结果："
+grep -A 12 "define Device/xiaomi_redmi-router-ax6000-ubootmod" target/linux/mediatek/image/filogic.mk
