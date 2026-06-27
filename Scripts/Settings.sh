@@ -76,27 +76,16 @@ if [[ "${WRT_CONFIG}" == *"MEDIATEK"* ]] || [[ "${WRT_CONFIG}" == *"FILOGIC"* ]]
     if [ -f "target/linux/mediatek/image/filogic.mk" ]; then
         cp target/linux/mediatek/image/filogic.mk target/linux/mediatek/image/filogic.mk.bak
 
-        awk '
-        /define Device\/xiaomi_redmi-router-ax6000-ubootmod/ {
-            in_device = 1
-        }
-        in_device && /IMAGES := sysupgrade\.itb/ {
-            print "  IMAGES := sysupgrade.itb sysupgrade.bin"
-            next
-        }
-        in_device && /IMAGE\/sysupgrade\.itb := append-kernel/ {
-            print
-            print "  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata"
-            next
-        }
-        /^endef/ && in_device {
-            in_device = 0
-        }
-        { print }
-        ' target/linux/mediatek/image/filogic.mk > filogic.mk.tmp && mv filogic.mk.tmp target/linux/mediatek/image/filogic.mk
+        # 1. 替换 IMAGES 行（只改这一处，其余不动）
+        sed -i 's/IMAGES := sysupgrade\.itb$/IMAGES := sysupgrade.itb sysupgrade.bin/' target/linux/mediatek/image/filogic.mk
+
+        # 2. 获取原始缩进，在 IMAGE/sysupgrade.itb 行后追加 IMAGE/sysupgrade.bin 行
+        INDENT=$(grep -m 1 "IMAGE/sysupgrade.itb" target/linux/mediatek/image/filogic.mk | sed 's/[^[:space:]].*//')
+        sed -i "/IMAGE\/sysupgrade\.itb := sysupgrade-tar | append-metadata/a\\${INDENT}IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata" target/linux/mediatek/image/filogic.mk
 
         echo "验证修改结果："
         grep -A 12 "define Device/xiaomi_redmi-router-ax6000-ubootmod" target/linux/mediatek/image/filogic.mk
+        echo "AX6000 ubootmod image format has been changed to .bin!"
     else
         echo "filogic.mk 不存在，跳过 AX6000 修改"
     fi
